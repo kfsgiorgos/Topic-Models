@@ -62,8 +62,8 @@ result1[, lapply(.SD, which.max), .SDcols = c(names(result[,c(-1, -3, -4)]))]
 FindTopicsNumber_plot(result)
 
 seqk <- seq(2, 25, 1)
-burnin <- 5000
-iter <- 30000
+burnin <- 10000
+iter <- 50000
 keep <- 100
 system.time(fitted_many3 <- lapply(seqk, function(k) topicmodels::LDA(dtm1, k = k, method = "Gibbs", 
                                                                       control = list(burnin = burnin,iter = iter, 
