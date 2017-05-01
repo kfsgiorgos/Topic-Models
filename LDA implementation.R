@@ -64,7 +64,7 @@ FindTopicsNumber_plot(result)
 seqk <- seq(2, 25, 1)
 burnin <- 10000
 iter <- 50000
-keep <- 100
+keep <- 120
 system.time(fitted_many3 <- lapply(seqk, function(k) topicmodels::LDA(dtm1, k = k, method = "Gibbs", 
                                                                       control = list(burnin = burnin,iter = iter, 
                                                                                      keep = keep))))
