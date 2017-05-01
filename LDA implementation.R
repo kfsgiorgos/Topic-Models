@@ -6,7 +6,7 @@ data("JSS_papers", package = "corpus.JSS.papers")
 # sudo apt-get install libgsl0-dev
 pkg <- c("OAIHarvester", "tm", "topicmodels", "XML", "slam", "bitops", "ggplot2", "mapproj", "stringr", "maps",
          "grid", "gridExtra", "RColorBrewer", "colorspace", "scales", "stringr", "reshape2", "data.table",
-         "ldatuning", "tidyr")
+         "ldatuning", "tidyr", "Rmpfr")
 new.pkg <- pkg[!(pkg %in% installed.packages())]
 if (length(new.pkg)) {
   install.packages(new.pkg, dependencies = TRUE)
@@ -39,8 +39,6 @@ keep <- 50
 fitted <- topicmodels::LDA(llisreduced.dtm, k = k, method = "Gibbs",control = list(burnin = burnin, iter = iter, keep = keep) )
 ## assuming that burnin is a multiple of keep
 logLiks <- fitted@logLiks[-c(1:(burnin/keep))]
-install.packages("Rmpfr")
-library(Rmpfr)
 ## This returns the harmomnic mean for k = 25 topics.
 harmonicMean(logLiks)
 
@@ -53,7 +51,7 @@ system.time(result <- FindTopicsNumber(
   metrics = c("Griffiths2004", "CaoJuan2009", "Arun2010", "Deveaud2014"),
   method = "Gibbs",
   control = list(seed = 77),
-  mc.cores = 5L,
+  mc.cores = 6L,
   verbose = TRUE
 ))
 result1 <- as.data.table(result)
@@ -72,4 +70,32 @@ system.time(fitted_many3 <- lapply(seqk, function(k) topicmodels::LDA(dtm1, k = 
 logLiks_many3 <- lapply(fitted_many3, function(L)  L@logLiks[-c(1:(burnin/keep))])
 hm_many3 <- sapply(logLiks_many3, function(h) harmonicMean(h))
 paste("The optimal number of topics is", seqk[which.max(hm_many3)])
+
+seqk <- seq(2, 25, 1)
+burnin <- 5000
+iter <- 50000
+keep <- 100
+system.time(fitted_many2 <- lapply(seqk, function(k) topicmodels::LDA(dtm1, k = k, method = "Gibbs", 
+                                                                      control = list(burnin = burnin,iter = iter, 
+                                                                                     keep = keep))))
+logLiks_many2 <- lapply(fitted_many2, function(L)  L@logLiks[-c(1:(burnin/keep))])
+hm_many2 <- sapply(logLiks_many2, function(h) harmonicMean(h))
+paste("The optimal number of topics is", seqk[which.max(hm_many2)])
+##########################################################################################
+############ We select the optimal number of topics and run the Gibbs Sampler ############
+##########################################################################################
+system.time(llis.model <- topicmodels::LDA(dtm1, seqk[which.max(hm_many3)], method = "Gibbs", control = list(burnin = burnin,iter = iter, 
+                                                                                                             keep = keep)))
+##########################################################################################
+################################### Explore the model ####################################
+##########################################################################################
+llis.topics <- topicmodels::topics(llis.model, 1)
+llis.terms <- as.data.frame(topicmodels::terms(llis.model, 15), stringsAsFactors = FALSE)
+doctopics.df <- as.data.frame(llis.topics)
+
+
+
+
+
+
 
