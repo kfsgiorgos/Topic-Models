@@ -5,7 +5,7 @@ data("JSS_papers", package = "corpus.JSS.papers")
 
 # sudo apt-get install libgsl0-dev
 pkg <- c("OAIHarvester", "tm", "topicmodels", "XML", "slam", "bitops", "ggplot2", "mapproj", "stringr", "maps",
-         "grid", "gridExtra", "RColorBrewer", "igraph", "colorspace", "scales", "stringr", "reshape2", "data.table",
+         "grid", "gridExtra", "RColorBrewer", "colorspace", "scales", "stringr", "reshape2", "data.table",
          "ldatuning", "tidyr")
 new.pkg <- pkg[!(pkg %in% installed.packages())]
 if (length(new.pkg)) {
