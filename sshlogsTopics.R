@@ -52,6 +52,7 @@ termfreq3[, document:=3]
 termfreq4[, document:=4]
 termfreq5[, document:=5]
 termfreq6[, document:=6]
+#### the documents do not contain all the words in vocabulary so we have to add rows with 0 counts on the missing words
 
 list1 <- list()
 list2 <- list()
@@ -116,21 +117,25 @@ topTerms[, variable:= as.character(variable)]
 topTerms[, Topic:= as.numeric(stringr::word(variable, 2))]
 str(topTerms)
 
-
-
 topicLabel <- topTerms[, .(Label = list(value), Topic = variable), by = variable]
 topicLabel[, variable:=NULL]
 topicLabel[, Label := lapply(Label, function(x) paste0(x[1], " @nd ", x[2], " @nd ", x[3]))]
+
 phi <- as.data.table(topicmodels::posterior(llis.model)$terms)
 vocab <- names(phi)
 docLength <- as.vector(corpusip[, .N, by = document][, N])
-
 freqterms <- as.vector(corpusip[, sum(count), by = term][,V1])
-
+#########################################################
+################### LDAvis ##############################
+#########################################################
 json_lda <- LDAvis::createJSON(phi = phi, theta = theta,
                                vocab = vocab,
                                doc.length = docLength,
                                term.frequency = freqterms,
                                R = length(vocab))
+LDAvis::serVis(json_lda)
+
+
+
 
 
