@@ -111,7 +111,7 @@ str(doctopics.df)
 #  tidyr::gather(llis.terms, Topic)
 t <- as.data.table(llis.terms)
 topicTerms <- data.table::melt.data.table(t, measure.vars = c("Topic 1", "Topic 2", "Topic 3"))
-topicTerms[, Rank:= rep(1:15)]
+topicTerms[, Rank:= rep(1:20)]
 topTerms <- copy(topicTerms[Rank<4])
 topTerms[, variable:= as.character(variable)]
 topTerms[, Topic:= as.numeric(stringr::word(variable, 2))]
@@ -134,8 +134,27 @@ json_lda <- LDAvis::createJSON(phi = phi, theta = theta,
                                term.frequency = freqterms,
                                R = length(vocab))
 LDAvis::serVis(json_lda)
+########################################################################################################
+############ Use Posterior probability to predict the topic of the next unobserved Document ############
+########################################################################################################
 
+unobservedDoc1 <- temp[V1_03 == "192.168.202.90"]
+unobservedDoc2 <- temp[V1_03 == "192.168.202.80"]
+unobservedDoc <- rbindlist(list(unobservedDoc1, unobservedDoc2))
+unobservedDoc[, V1_09:=plyr::revalue(unobservedDoc[, V1_09], c("-" = "fail ssh access"))]
+termfreq <- unobservedDoc[, .N, by = V1_09]
+termfreq[, document:=13]
+w <- as.vector(as.character(levels(corpusip$term)))
+w1 <- as.vector(termfreq[, as.character(V1_09)])
+setdiffdocs <- data.table(V1_09 = setdiff(w, w1), N = 0, document = 13)
+corpusdoc <- rbindlist(list(termfreq, setdiffdocs))
+setnames(corpusdoc, c("V1_09", "N"), c("term", "count"))
+setcolorder(corpusdoc, c("document", "term", "count"))
 
+dtmdoc <- corpusdoc %>%
+  cast_dtm(document, term, count)
 
-
-
+posterior(llis.model_1, dtmdoc)$topics # posterior probability for the unobserved doc
+topTerms # Top terms in modelled corpus 
+termfreq # distribution of unobserved doc
+## The trained model predicted accurately the predominant topic in the test doc
