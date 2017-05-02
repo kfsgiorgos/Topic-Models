@@ -1,5 +1,5 @@
 pkg <- c("readr", "lubridate", "chron", "DT", "data.table", "plyr", "dplyr", "tidytext", "ldatuning", "tidyr", "Rmpfr",
-         "topicmodels", "tm", "splitstackshape")
+         "topicmodels", "tm", "splitstackshape", "LDAvis", "stringi", "servr")
 new.pkg <- pkg[!(pkg %in% installed.packages())]
 if (length(new.pkg)) {
   install.packages(new.pkg, dependencies = TRUE)
@@ -46,14 +46,25 @@ termfreq3[, V1_09:=plyr::revalue(termfreq3[, V1_09], c("-" = "fail ssh access"))
 termfreq4[, V1_09:=plyr::revalue(termfreq4[, V1_09], c("-" = "fail ssh access"))]
 termfreq5[, V1_09:=plyr::revalue(termfreq5[, V1_09], c("-" = "fail ssh access"))]
 termfreq6[, V1_09:=plyr::revalue(termfreq6[, V1_09], c("-" = "fail ssh access"))]
-
 termfreq1[, document:=1]
 termfreq2[, document:=2]
 termfreq3[, document:=3]
 termfreq4[, document:=4]
 termfreq5[, document:=5]
 termfreq6[, document:=6]
-corpusip <- rbindlist(list(termfreq1, termfreq2, termfreq3, termfreq4, termfreq5, termfreq6))
+
+list1 <- list()
+list2 <- list()
+for (i in 1:6){
+  w <- as.vector(as.character(levels(corpusip$term)))
+  w1 <- as.vector(eval(parse(text = paste0("termfreq", i)))[, as.character(V1_09)])
+  list1[[i]] <- data.table(V1_09 = setdiff(w, w1), N = 0, document = i)
+}
+for (i in 1:6){
+  list2[[i]] <- rbindlist(list(eval(parse(text = paste0("termfreq", i))), list1[[i]]))
+}
+corpusip <- rbindlist(list2)
+
 setnames(corpusip, c("V1_09", "N"), c("term", "count"))
 setcolorder(corpusip, c("document", "term", "count"))
 
@@ -82,15 +93,44 @@ keep <- 100
 system.time(llis.model <- topicmodels::LDA(dtmip, 3, method = "Gibbs", control = list(burnin = burnin,iter = iter, 
                                                                                                              keep = keep)))
 llis.topics <- topicmodels::topics(llis.model, 1)
-llis.terms <- as.data.frame(topicmodels::terms(llis.model, 15), stringsAsFactors = FALSE)
+llis.terms <- as.data.frame(topicmodels::terms(llis.model, 20), stringsAsFactors = FALSE)
 doctopics.df <- as.data.table(llis.topics)
 
 theta <- as.data.table(topicmodels::posterior(llis.model)$topics)
 head(theta)
 
-theta_mean_by <- by(theta, colMeans)
-doctopics.df[, DocumentId:= rownames(doctopics.df)]
+doctopics.df[, DocumentId:= as.integer(rownames(doctopics.df))]
 setnames(doctopics.df, "llis.topics", "Topic")
 setcolorder(doctopics.df, c("DocumentId", "Topic"))
+str(doctopics.df)
+##################################################################
+######################## Topic Labels ############################
+##################################################################
+
+#  tidyr::gather(llis.terms, Topic)
+t <- as.data.table(llis.terms)
+topicTerms <- data.table::melt.data.table(t, measure.vars = c("Topic 1", "Topic 2", "Topic 3"))
+topicTerms[, Rank:= rep(1:15)]
+topTerms <- copy(topicTerms[Rank<4])
+topTerms[, variable:= as.character(variable)]
+topTerms[, Topic:= as.numeric(stringr::word(variable, 2))]
+str(topTerms)
+
+
+
+topicLabel <- topTerms[, .(Label = list(value), Topic = variable), by = variable]
+topicLabel[, variable:=NULL]
+topicLabel[, Label := lapply(Label, function(x) paste0(x[1], " @nd ", x[2], " @nd ", x[3]))]
+phi <- as.data.table(topicmodels::posterior(llis.model)$terms)
+vocab <- names(phi)
+docLength <- as.vector(corpusip[, .N, by = document][, N])
+
+freqterms <- as.vector(corpusip[, sum(count), by = term][,V1])
+
+json_lda <- LDAvis::createJSON(phi = phi, theta = theta,
+                               vocab = vocab,
+                               doc.length = docLength,
+                               term.frequency = freqterms,
+                               R = length(vocab))
 
 
